@@ -1,5 +1,8 @@
 package com.redhat.ceylon.compiler.java;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Field;
 import java.util.Arrays;
 
 import ceylon.language.ArraySequence;
@@ -1643,5 +1646,19 @@ public class Util {
         }
         throw new OverflowException();
     }
-    
+
+    /**
+     * Used during deserialization to obtain a MethodHandle used for resetting final fields.
+     * @param lookup The lookup on the class containing the field
+     * @param fieldName The name of the field whose value is to be set 
+     * @return The method handle
+     * @throws ReflectiveOperationException
+     */
+    public static MethodHandle setter(MethodHandles.Lookup lookup, String fieldName) throws ReflectiveOperationException {
+        // Should this be an instance method of some thing passed to the derserialize method
+        Field field = lookup.lookupClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        MethodHandle handle = lookup.unreflectSetter(field);
+        return handle;
+    }
 }
