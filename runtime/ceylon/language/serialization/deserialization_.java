@@ -5,7 +5,6 @@ import com.redhat.ceylon.compiler.java.metadata.Method;
 import com.redhat.ceylon.compiler.java.runtime.serialization.DeserializationContextImpl;
 
 import ceylon.language.serialization.DeserializationContext;
-import ceylon.language.serialization.SerializationContext;
 
 @Ceylon(major=7, minor=0)
 @Method

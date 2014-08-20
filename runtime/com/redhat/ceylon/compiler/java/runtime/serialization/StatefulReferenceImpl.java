@@ -1,38 +1,32 @@
 package com.redhat.ceylon.compiler.java.runtime.serialization;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-
-import com.redhat.ceylon.compiler.java.runtime.metamodel.AppliedClass;
-import com.redhat.ceylon.compiler.java.runtime.metamodel.AppliedMemberClass;
-import com.redhat.ceylon.compiler.java.runtime.model.ReifiedType;
-import com.redhat.ceylon.compiler.java.runtime.model.TypeDescriptor;
+import java.util.LinkedList;
+import java.util.NoSuchElementException;
 
 import ceylon.language.AssertionError;
-import ceylon.language.Empty;
+import ceylon.language.Finished;
 import ceylon.language.Tuple;
-import ceylon.language.impl.BaseIterable;
-import ceylon.language.impl.BaseIterator;
-import ceylon.language.impl.rethrow_;
-import ceylon.language.meta.declaration.ValueDeclaration;
+import ceylon.language.meta.type_;
 import ceylon.language.meta.model.ClassModel;
+import ceylon.language.serialization.Deconstructed;
+import ceylon.language.serialization.Deconstructor;
 import ceylon.language.serialization.Reference;
 import ceylon.language.serialization.StatefulReference;
-import ceylon.language.serialization.Deconstructor;
-import ceylon.language.serialization.Deconstructed;
+import ceylon.language.serialization.StatelessReference;
+
+import com.redhat.ceylon.compiler.java.runtime.model.ReifiedType;
+import com.redhat.ceylon.compiler.java.runtime.model.TypeDescriptor;
 
 class SerializingStatefulReference<Instance> 
         implements StatefulReference<Instance>, ReifiedType {
     private final TypeDescriptor reified$Instance;
     private final Object id;
     private final Instance instance;
-    private final Deconstructor deconstructor;
     
-    SerializingStatefulReference(TypeDescriptor reified$Instance, SerializationContextImpl context, Object id, Instance instance, Deconstructor deconstructor) {
+    SerializingStatefulReference(TypeDescriptor reified$Instance, SerializationContextImpl context, Object id, Instance instance) {
         this.reified$Instance = reified$Instance;
         this.id = id;
         this.instance = instance;
-        this.deconstructor = deconstructor;
     }
     
     public String toString() {
@@ -40,7 +34,7 @@ class SerializingStatefulReference<Instance>
     }
     
     @Override
-    public /*Deconstructed<Instance>*/ Object serialize() {
+    public /*Deconstructed<Instance>*/ Object serialize(Deconstructor deconstructor) {
         ((Serializable)this.instance).$serialize$(deconstructor);
         return null;
     }
@@ -71,47 +65,30 @@ class SerializingStatefulReference<Instance>
     public Object getId() {
         return id;
     }
+    
+
+    @SuppressWarnings("rawtypes")
+    @Override
+    public ClassModel getClazz() {
+        return type_.type(reified$Instance, instance);
+    }
 }
 
 
 class DeserializingStatefulReference<Instance> 
-        implements StatefulReference<Instance>, ReifiedType {
+        implements StatefulReference<Instance>, $InstanceLeaker$<Instance>, ReifiedType {
     
     private final TypeDescriptor reified$Instance;
     private final DeserializationContextImpl context;
     private final Object id;
     private final Instance instance;
-    
     private Deconstructed deconstructed;
-    private ReconstructionState state = ReconstructionState.UNINITIALIZED;
-    
-    static enum ReconstructionState {
-        /** 
-         * {@link DeserializingStatefulReference#instance} is uninitialized 
-         * ({@link Serializable#$deserialize$(Deconstructed)} has not yet 
-         * been called).
-         */
+    static enum State {
         UNINITIALIZED,
-        /** 
-         * {@link DeserializingStatefulReference#instance} is initialized 
-         * ({@link Serializable#$deserialize$(Deconstructed)} has been 
-         * called). Instances reachable from {@code instance} are in 
-         * an unknown state.
-         */
         UNINITIALIZED_REFS,
-        /**
-         * {@link DeserializingStatefulReference#instance} is initialized 
-         * ({@link Serializable#$deserialize$(Deconstructed)} has been 
-         * called) and we're in the process of ensuring the instances 
-         * reachable from {@code instance} are also initialized.
-         */
-        INITIALIZING_REFS,
-        /**
-         * {@link DeserializingStatefulReference#instance} and everything 
-         * reacahable from it is initialized.
-         */
         INITIALIZED
     }
+    private State state;
     
     /**
      * Create a stateful reference to the instance with 
@@ -129,57 +106,35 @@ class DeserializingStatefulReference<Instance>
      */
     DeserializingStatefulReference(TypeDescriptor reified$Instance, 
             DeserializationContextImpl context, Object id, 
-            ClassModel classModel, 
+            Instance instance, 
             Deconstructed deconstructed) {
         this.reified$Instance = reified$Instance;
         this.context = context;
         this.id = id;
+        this.instance = instance;
         this.deconstructed = deconstructed;
-        java.lang.Class<Instance> clazz;
-        TypeDescriptor[] typeArguments = ((TypeDescriptor.Class)((ReifiedType)classModel).$getType$()).getTypeArguments();
-        if (classModel instanceof AppliedClass) {
-            clazz = (java.lang.Class)((TypeDescriptor.Class)typeArguments[0]).getKlass();
-        } else if (classModel instanceof AppliedMemberClass) {
-            clazz = (java.lang.Class)((TypeDescriptor.Class)typeArguments[1]).getKlass();
-        } else {
-            throw new AssertionError("unexpected class model: " 
-                    + (classModel != null ? classModel.getClass().getName() : "null"));
-        }
-        
-        try {
-            Constructor<Instance> ctor = clazz.getDeclaredConstructor($Serialization$.class);
-            ctor.setAccessible(true);
-            instance = ctor.newInstance(new Object[]{null});// Pass a null $Serialization$
-            context.put(id, (DeserializingStatefulReference)this);
-        } catch (NoSuchMethodException e) {
-            throw new AssertionError("class is not serializable " + classModel);
-        } catch (InvocationTargetException e) {
-            throw new AssertionError("error thrown during instantiation of " + classModel+ (e.getMessage() != null ? ": " + e.getMessage() : ""));
-        } catch (SecurityException e) {
-            // Should never happen
-            throw new RuntimeException(e);
-        } catch (InstantiationException|IllegalAccessException|IllegalArgumentException e) {
-            // Should never happen
-            throw new RuntimeException(e);
-        }
+        this.state = State.UNINITIALIZED;
     }
     
     public String toString() {
-        if (state == ReconstructionState.INITIALIZED) {
+        switch (state) {
+        case UNINITIALIZED:
+            return "unitialized " + id +"<=((" + deconstructed + "))";
+        case UNINITIALIZED_REFS:
+            return "unitialized refs " + id +"<=(" + deconstructed + ")";
+        case INITIALIZED:
             return id +"<=" + instance;
-        } else {
-            return id +"<=(" + deconstructed + ")";
         }
+        throw new AssertionError("Illegal state");
     }
     
     
     @Override
-    public /*Deconstructed<Instance>*/ Object serialize() {
+    public /*Deconstructed<Instance>*/ Object serialize(Deconstructor deconstructor) {
         // TODO What does this mean in the context of derserialization?
         throw new AssertionError("WTF?");
-        //return DeconstructedImpl.forSer(context, id, instance);
     }
-
+    
     @Override
     public Instance instance() {
         // !!!!! XXX MUST NOT LEAK PARTIALLY BUILT OBJECTS
@@ -190,71 +145,106 @@ class DeserializingStatefulReference<Instance>
         // references (from this.context) and ensuring those are 
         // reconstructed.
         reconstruct();
-        if (state == ReconstructionState.UNINITIALIZED_REFS) {
-            state = ReconstructionState.INITIALIZING_REFS;
-            try {
-                // for each reference in deconstructed
-                Reference ref = null;
-                DeserializingStatefulReference<Object> sr = context.getReference(ref.getId());
-                sr.instance();
-            } catch (java.lang.Throwable t) {
-                state = ReconstructionState.UNINITIALIZED_REFS;
-                rethrow_.rethrow(t);
-            }
-            state = ReconstructionState.INITIALIZED;
-            deconstructed = null;
-        }
         return instance;
     }
     
     /**
-     * Reconstruct the instance according to the {@link #deconstructed} 
-     * passed to our constructor. 
-     * 
-     * The {@link Deconstructed} passed to 
-     * {@link Serializable#$deserialize$(Deconstructed)} 
-     * will replace references by their (possibly unreconstructed) 
-     * instances. This means {@link Serializable#$deserialize$(Deconstructed)} 
-     * can see unreconstructed instances, but since they're generated by 
-     * the compiler they shouldn't leak to user code.
+     * Reconstructs this instance
      */
     @Override
     public Object reconstruct() {
-        if (state == ReconstructionState.UNINITIALIZED) {
-            // TODO synchronization?
-            class DereferencingDeconstructed 
-                    extends BaseIterable<Tuple<Object,? extends ValueDeclaration,? extends Tuple<Object,? extends Object,? extends Empty>>, Object>
-                    implements Deconstructed {
-                DereferencingDeconstructed() {
-                    super(null, null);// TODO TypeDescriptors
+        if (state != State.INITIALIZED) {
+            LinkedList<DeserializingStatefulReference<?>> queue = new LinkedList<DeserializingStatefulReference<?>>();
+            queue.addLast(this);
+            while (!queue.isEmpty()) {
+                DeserializingStatefulReference<?> r = queue.removeFirst();
+                if (r.state == State.UNINITIALIZED) {
+                    ((Serializable)r.instance).$deserialize$(r.deconstructed);
+                    r.state = State.UNINITIALIZED_REFS;
                 }
-                @Override
-                public <Type> Object get(TypeDescriptor arg0, ValueDeclaration arg1) {
-                    Object valueOrReference = deconstructed.get(arg0, arg1);
-                    if (valueOrReference instanceof Reference) {
-                        Object referredId = ((Reference<?>) valueOrReference).getId();
-                        DeserializingStatefulReference<Object> reference = context.getReference(referredId);
-                        if (reference == null) {
-                            throw new AssertionError("reference to unregistered id: " + referredId);
+                if (r.state == State.UNINITIALIZED_REFS) {
+                    for (Reference<Object> referred : r.references()) {
+                        if (referred instanceof StatelessReference) {
+                            throw new AssertionError("reference " + referred.getId() + " has not been deserialized");
                         }
-                        return reference.instance;
-                    } else {
-                        return valueOrReference;
+                        DeserializingStatefulReference<?> statefulReferred = (DeserializingStatefulReference<?>)referred;
+                        if (statefulReferred.state != State.INITIALIZED) {
+                            queue.addLast(statefulReferred);
+                        }
                     }
-                }
-                public ceylon.language.Iterator<Tuple<Object,? extends ValueDeclaration,? extends Tuple<Object,? extends Object,? extends Empty>>> iterator() {
-                    return new BaseIterator<Tuple<Object,? extends ValueDeclaration,? extends Tuple<Object,? extends Object,? extends Empty>>>(null) {
-                        ceylon.language.Iterator iter = deconstructed.iterator();
-                        public Object next() {
-                            return iter.next();
-                        }
-                    };
+                    // This is actually too weak: If an exception is thrown
+                    // while initialising some other thing (already in, or 
+                    // yet to be added to the queue), then it will be possible 
+                    // to obtain a reference to a broken thing
+                    // We could track this on a per-instance basis 
+                    // (but that means tracking the reverse dependencies, transitively)
+                    // Or on a per-context basis, so that instance always 
+                    // throws if there was ever an exception, even if the 
+                    // broken object is not each reachable from the 
+                    // instance being sought
+                    
+                    r.state = State.INITIALIZED;
+                    r.deconstructed = null;
                 }
             }
-            ((Serializable)this.instance).$deserialize$(new DereferencingDeconstructed());
-            state = ReconstructionState.UNINITIALIZED_REFS;
         }
         return null;
+    }
+    
+    /**
+     * The references in the Deconstructed
+     * @return
+     */
+    private Iterable<Reference<Object>> references() {
+        return new Iterable<Reference<Object>>() {
+
+            @Override
+            public java.util.Iterator<Reference<Object>> iterator() {
+                return new java.util.Iterator<Reference<Object>>() {
+                    ceylon.language.Iterator it = deconstructed.iterator();
+                    Object next = null;
+                    
+                    @Override
+                    public boolean hasNext() {
+                        if (next == null) {
+                            Object vdValue = it.next();
+                            while (true) {
+                                if (vdValue instanceof Finished) {
+                                    next = vdValue;
+                                    break;
+                                }
+                                Object valueOrRef = ((Tuple)vdValue).getFromFirst(1);
+                                if (valueOrRef instanceof Reference) {
+                                    next = valueOrRef;
+                                    break;
+                                }
+                                vdValue = it.next();
+                            }
+                        }
+                        return !(next instanceof Finished);
+                    }
+                    @Override
+                    public Reference<Object> next() {
+                        if (next == null) {
+                            hasNext();
+                        }
+                        if (next instanceof Finished) {
+                            throw new NoSuchElementException();
+                        }
+                        Reference<Object> result = (Reference)next;
+                        next = null;
+                        return result;
+                    }
+                    
+                    @Override
+                    public void remove() {
+                        throw new UnsupportedOperationException();
+                    }
+                    
+                };
+            }
+            
+        };
     }
 
     @Override
@@ -262,8 +252,19 @@ class DeserializingStatefulReference<Instance>
         return id;
     }
     
+    @SuppressWarnings("rawtypes")
+    @Override
+    public ClassModel getClazz() {
+        return type_.type(reified$Instance, instance);
+    }
+    
     @Override
     public TypeDescriptor $getType$() {
         return TypeDescriptor.klass(DeserializingStatefulReference.class, reified$Instance);
+    }
+
+    @Override
+    public Instance $leakInstance$() {
+        return instance;
     }
 }

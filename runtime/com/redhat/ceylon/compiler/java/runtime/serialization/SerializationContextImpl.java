@@ -1,13 +1,6 @@
 package com.redhat.ceylon.compiler.java.runtime.serialization;
 
 import java.util.IdentityHashMap;
-import java.util.Set;
-
-import com.redhat.ceylon.compiler.java.metadata.Ceylon;
-import com.redhat.ceylon.compiler.java.metadata.Class;
-import com.redhat.ceylon.compiler.java.metadata.SatisfiedTypes;
-import com.redhat.ceylon.compiler.java.runtime.model.ReifiedType;
-import com.redhat.ceylon.compiler.java.runtime.model.TypeDescriptor;
 
 import ceylon.language.Iterator;
 import ceylon.language.Null;
@@ -15,8 +8,16 @@ import ceylon.language.finished_;
 import ceylon.language.impl.BaseIterable;
 import ceylon.language.serialization.SerializationContext;
 import ceylon.language.serialization.StatefulReference;
-import ceylon.language.serialization.Deconstructor;
 
+import com.redhat.ceylon.compiler.java.metadata.Ceylon;
+import com.redhat.ceylon.compiler.java.metadata.Class;
+import com.redhat.ceylon.compiler.java.metadata.SatisfiedTypes;
+import com.redhat.ceylon.compiler.java.runtime.model.ReifiedType;
+import com.redhat.ceylon.compiler.java.runtime.model.TypeDescriptor;
+
+/**
+ * The implementation of {@link SerializationContext}
+ */
 @Ceylon(major=7, minor=0)
 @Class
 @SatisfiedTypes("ceylon.language.serialization::SerializationContext")
@@ -25,11 +26,9 @@ public class SerializationContextImpl
         implements SerializationContext, ReifiedType {
     
     private final IdentityHashMap<Object, Object> instanceToId = new IdentityHashMap<>();
-    private final Deconstructor deconstructor;
     
-    public SerializationContextImpl(Deconstructor deconstructor) {
+    public SerializationContextImpl() {
         super(TypeDescriptor.klass(SerializingStatefulReference.class, ceylon.language.Object.$TypeDescriptor$), Null.$TypeDescriptor$);
-        this.deconstructor = deconstructor;
     }
     
     @Override
@@ -60,7 +59,7 @@ public class SerializationContextImpl
                 && otherInstance != instance) {
             throw new ceylon.language.AssertionError("A different instance has already been registered with id "+id);
         }
-        return new SerializingStatefulReference(reified$Instance, this, id, instance, deconstructor);
+        return new SerializingStatefulReference(reified$Instance, this, id, instance);
     }
 
     @Override

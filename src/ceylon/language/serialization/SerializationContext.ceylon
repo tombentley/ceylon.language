@@ -5,10 +5,14 @@
  serialization library is responsible for iterating the 
  registered objects in the context and persisting their 
  [[deconstructed states|Deconstructed]] to the output 
- stream."
+ stream.
+ 
+ The serialization library obtains an instance by calling 
+ [[serialization()]]."
 shared sealed
 interface SerializationContext
-        satisfies {StatefulReference<Object>*} & Category<Object> {
+        satisfies {StatefulReference<Object?>*} /*& Category<Object>*/ {
+    // XXX Category<Object> but ought to be Category<Object?>, surely?
     "Create a reference to the given [[instance]] of 
      [[Class]], assigning it the given [[identifer|id]]."
     throws (`class AssertionError`,
@@ -20,11 +24,11 @@ interface SerializationContext
     "An iterator over each of the objects which have 
      been [[registered|reference]] with this context."
     shared actual formal
-    Iterator<StatefulReference<Object>> iterator();
+    Iterator<StatefulReference<Object?>> iterator();
     
-    "Whether the given instance has been registered with this context"
+    /*"Whether the given instance has been registered with this context"
     shared actual formal
-    Boolean contains(Object instance);
+    Boolean contains(Object instance);*/
     
     // TODO What happens if reference is called during an iteration?
 }

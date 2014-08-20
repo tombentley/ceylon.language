@@ -8,15 +8,15 @@ import ceylon.language.meta.model {
  [[deconstructed states|Deconstructed]] of the objects with
  the context. Then, it may obtain a reference to a fully
  deconstructed object via [[StatefulReference.instance]],
- and return it to the client."
+ and return it to the client.
+ 
+ The serialization library obtains an instance by calling 
+ [[deserialization()]]."
 shared sealed
 interface DeserializationContext
-        satisfies {Reference<Object>*} {
+        satisfies {Reference<Object?>*} {
     
     "Obtain a reference to the instance of [[Class]] with 
      the given [[identifer|id]]."
-    throws (`class AssertionError`,
-        "if this deserialization context has already 
-         produced a reference for the given id")
-    shared formal StatelessReference<Instance> reference<Instance>(Object id, ClassModel<Instance> clazz);
+    shared formal Reference<Instance> reference<Instance>(Object id, ClassModel<Instance> clazz);
 }

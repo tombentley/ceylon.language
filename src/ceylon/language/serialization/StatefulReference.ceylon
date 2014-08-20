@@ -4,10 +4,10 @@ interface StatefulReference<Instance> satisfies Reference<Instance> {
     
     "Get the flattened state of the instance."
     shared formal
-    /*Deconstructed<Instance>*/ void serialize();
+    /*Deconstructed<Instance>*/ void serialize(Deconstructor deconstructor);
     
     "Get the instance. During deserialization, could force 
-     reconstruction"
+     reconstruction."
     throws (`class AssertionError`,
         "if there is a problem reconstructing the object
          or any object it references")
@@ -19,5 +19,5 @@ interface StatefulReference<Instance> satisfies Reference<Instance> {
         "if there is a problem reconstructing the object
          or any object it references")
     shared formal
-    void reconstruct(); //XXX Why do we need this?
+    void reconstruct();
 }
