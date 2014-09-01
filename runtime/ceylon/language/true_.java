@@ -6,12 +6,16 @@ import com.redhat.ceylon.compiler.java.metadata.Object;
 import com.redhat.ceylon.compiler.java.metadata.Class;
 import com.redhat.ceylon.compiler.java.metadata.Transient;
 import com.redhat.ceylon.compiler.java.metadata.ValueType;
+import com.redhat.ceylon.compiler.java.runtime.model.TypeDescriptor;
 
 @Ceylon(major = 7) 
 @Object
 @Class(extendsType = "ceylon.language::Boolean")
 @ValueType
 public final class true_ extends Boolean {
+    
+    @Ignore
+    public final static TypeDescriptor $TypeDescriptor$ = TypeDescriptor.klass(true_.class);
     
     private final static true_ value = new true_();
 
@@ -29,5 +33,11 @@ public final class true_ extends Boolean {
     @Transient
     public java.lang.String toString() {
         return "true";
+    }
+    
+    @Override
+    @Ignore
+    public TypeDescriptor $getType$() {
+        return $TypeDescriptor$;
     }
 }
