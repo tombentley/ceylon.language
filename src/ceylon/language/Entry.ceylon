@@ -6,7 +6,8 @@
  
      String->Person entry = person.name->person;"
 by ("Gavin")
-shared final class Entry<out Key, out Item>(key, item)
+shared final serializable
+class Entry<out Key,out Item>(key, item)
         extends Object()
         given Key satisfies Object
         given Item satisfies Object {
@@ -21,17 +22,16 @@ shared final class Entry<out Key, out Item>(key, item)
      entry. For any `entry`:
      
          entry.pair == [entry.key,entry.item]"
-    shared [Key,Item] pair => [key,item];
+    shared [Key, Item] pair => [key, item];
     
     "Determines if this entry is equal to the given entry. 
      Two entries are equal if they have the same key and 
      the same value."
     shared actual Boolean equals(Object that) {
         if (is Entry<Object,Object> that) {
-            return this.key==that.key &&
-                    this.item==that.item;
-        }
-        else {
+            return this.key == that.key &&
+                    this.item == that.item;
+        } else {
             return false;
         }
     }
@@ -41,5 +41,4 @@ shared final class Entry<out Key, out Item>(key, item)
     "Returns a description of the entry in the form 
      `key->item`."
     shared actual String string => "``key``->``item``";
-    
 }
