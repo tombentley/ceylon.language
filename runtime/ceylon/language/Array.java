@@ -566,8 +566,10 @@ public final class Array<Element>
             }
             else if (clazz==java.lang.Byte.class) {
                 byte[] array = new byte[size];
-                byte value = ((java.lang.Byte) element).byteValue();
-                if (value!=0) Arrays.fill(array, value);
+                if (element!=null) {
+                    byte value = ((java.lang.Byte) element).byteValue();
+                    if (value!=0) Arrays.fill(array, value);
+                }
                 return array;
             }
             else if (clazz==java.lang.Short.class) {
