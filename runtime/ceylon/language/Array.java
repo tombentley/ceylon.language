@@ -29,7 +29,7 @@ import com.redhat.ceylon.compiler.java.metadata.TypeParameters;
 import com.redhat.ceylon.compiler.java.runtime.model.TypeDescriptor;
 
 @Ceylon(major = 7)
-@Class(extendsType="ceylon.language::Object", basic = false, identifiable = false)
+@Class(extendsType="ceylon.language::Basic")
 @TypeParameters(@TypeParameter(value = "Element"))
 @SatisfiedTypes({
     "ceylon.language::List<Element>",
