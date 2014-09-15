@@ -57,7 +57,7 @@ public class SerializationContextImpl
         if (otherInstance != null
                 && instance != null
                 && otherInstance != instance) {
-            throw new ceylon.language.AssertionError("A different instance has already been registered with id "+id);
+            throw new ceylon.language.AssertionError("A different instance has already been registered with id "+id+": \"" + otherInstance +"\", \""+ instance+"\"");
         }
         return new SerializableReferenceImpl(reified$Instance, this, id, instance);
     }
